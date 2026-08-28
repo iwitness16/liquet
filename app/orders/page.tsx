@@ -205,8 +205,40 @@ function OrdersInner() {
     }
 
     setSubmitting(true)
-    const orderId      = generateOrderId()
-    const submittedAt  = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })
+    const orderId     = generateOrderId()
+    const submittedAt = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })
+
+    // ── Build WhatsApp URL FIRST (synchronous, inside the user gesture) ──
+    // Mobile browsers block window.open if called after any await.
+    // We open the tab immediately, then do async work in the background.
+    const msg = [
+      `🆕 *New Order — CartelFakes*`,
+      `Order ID: ${orderId}`,
+      ``,
+      `*Product:* ${selected.name}`,
+      `*Quantity:* ${qty}`,
+      `*Total:* ${total}`,
+      `*Payment:* ${payMethod}`,
+      ``,
+      `*Customer Details*`,
+      `WhatsApp: ${whatsapp}`,
+      `Name: ${firstName} ${middleName} ${lastName}`.replace(/\s+/g, ' ').trim(),
+      `Sex: ${sex}`,
+      `Birthday: ${birthday}`,
+      `Hair: ${hairColor}  |  Eyes: ${eyeColor}`,
+      `Height: ${heightFt}ft ${heightIn}in  |  Weight: ${weight}lbs`,
+      address   ? `Address: ${address}`   : '',
+      customize ? `Customize: ${customize}` : '',
+      ``,
+      `📸 Photo & Signature sent via upload.`,
+      ``,
+      `_Sent from CartelFakes order form_`,
+    ].filter(Boolean).join('\n')
+
+    const waUrl = `https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(msg)}`
+
+    // Open WhatsApp NOW — synchronously, before any await — so mobile doesn't block it
+    window.open(waUrl, '_blank', 'noopener,noreferrer')
 
     const orderData = {
       orderId,
@@ -237,45 +269,17 @@ function OrdersInner() {
     }
 
     try {
-      // 1. Save to Firestore
+      // 1. Save to Firestore (after WhatsApp is already open)
       await addDoc(collection(db, 'orders'), orderData)
 
-      // 2. Send email to admin (fire-and-forget, don't block WhatsApp redirect)
+      // 2. Send email to admin (fire-and-forget)
       fetch('/api/send-order-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...orderData, createdAt: submittedAt }),
       }).catch(console.error)
 
-      // 3. Build WhatsApp message and open in new tab
-      const msg = [
-        `🆕 *New Order — CartelFakes*`,
-        `Order ID: ${orderId}`,
-        ``,
-        `*Product:* ${selected.name}`,
-        `*Quantity:* ${qty}`,
-        `*Total:* ${total}`,
-        `*Payment:* ${payMethod}`,
-        ``,
-        `*Customer Details*`,
-        `WhatsApp: ${whatsapp}`,
-        `Name: ${firstName} ${middleName} ${lastName}`.replace(/\s+/g, ' ').trim(),
-        `Sex: ${sex}`,
-        `Birthday: ${birthday}`,
-        `Hair: ${hairColor}  |  Eyes: ${eyeColor}`,
-        `Height: ${heightFt}ft ${heightIn}in  |  Weight: ${weight}lbs`,
-        address   ? `Address: ${address}`   : '',
-        customize ? `Customize: ${customize}` : '',
-        ``,
-        `📸 Photo & Signature sent via upload.`,
-        ``,
-        `_Sent from CartelFakes order form_`,
-      ].filter(Boolean).join('\n')
-
-      const waUrl = `https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(msg)}`
-      window.open(waUrl, '_blank', 'noopener,noreferrer')
-
-      // 4. Clear the form immediately so user can't double-submit
+      // 3. Clear form so user can't double-submit
       setWhatsapp('')
       setFirstName('')
       setMiddleName('')
@@ -296,7 +300,6 @@ function OrdersInner() {
       setPhotoBase64('')
       setSigBase64('')
       setSelected(allProducts[0])
-      // Reset file inputs
       if (photoInputRef.current) photoInputRef.current.value = ''
       if (sigInputRef.current)   sigInputRef.current.value   = ''
 
