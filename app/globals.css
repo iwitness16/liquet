@@ -1546,10 +1546,12 @@ img { display: block; max-width: 100%; }
 /* ────────────────────────────────────────
    FLOATING CONTACT BUTTONS
    Right side: WhatsApp + Telegram
+   Positioned above the Smartsupp chat widget
 ───────────────────────────────────────── */
 .floating-contacts {
   position: fixed;
-  bottom: 28px;
+  /* push up enough to clear Smartsupp's ~80px widget at the bottom */
+  bottom: 96px;
   right: 20px;
   z-index: 999;
   display: flex;
@@ -1607,7 +1609,7 @@ img { display: block; max-width: 100%; }
 
 /* Smaller on mobile */
 @media (max-width: 480px) {
-  .floating-contacts { bottom: 18px; right: 14px; gap: 8px; }
+  .floating-contacts { bottom: 88px; right: 12px; gap: 8px; }
   .floating-btn { width: 42px; height: 42px; }
   .floating-btn svg { width: 20px; height: 20px; }
 }
